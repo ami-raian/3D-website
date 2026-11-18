@@ -19,6 +19,23 @@ npm run build && npm start
 | `components/ShaderCanvas.tsx` | Maps scroll to the shader timeline and adapts render resolution to the device's speed. |
 | `app/globals.css` | Nearly all animation is plain CSS `calc()` on `--p`. No animation library. |
 
+## Hero showreel (scroll-scrubbed image sequence)
+
+The hero plays a video made of images as you scroll (`components/HeroSequence.tsx`). It stays light:
+the first frame is a normal `<img>`, the rest stream in progressively (every 16th frame first, then
+filling in), it crossfades between neighbouring frames while you scroll, and phones get a
+portrait-cropped set where only every 2nd frame is loaded.
+
+To use your own footage, export the video as frames (png/jpg) into a folder, then run:
+
+```bash
+node scripts/build-sequence.mjs "C:/path/to/frames" 144
+```
+
+This writes WebP frames to `public/sequence/` (1280px desktop, 540px portrait mobile) and updates
+`lib/sequence.ts`. 120 to 160 frames is the sweet spot. The current reel is 792 PNGs (684 MB)
+squeezed into 144 frames (about 4.5 MB desktop, about 1.9 MB actually loaded on phones).
+
 ## Customise
 
 - **Text and content**: `components/Hero.tsx`, `Film.tsx` (chapters), `Work.tsx` (projects), `Process.tsx`, `Footer.tsx`
