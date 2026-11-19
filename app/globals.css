@@ -243,11 +243,12 @@ em,
 /* ---------- hero ---------- */
 
 .hero {
-  /* --e: title exit (first ~30% of the scroll) · --out: reel dissolves into WebGL (last ~18%) */
-  --e: clamp(0, calc(var(--p) * 3.4), 1);
-  --out: clamp(0, calc((var(--p) - 0.82) * 5.6), 1);
+  /* tall on purpose: more scroll per frame = a slower, calmer reel. Taller means slower.
+     --e: title exit (first ~18% of the scroll) · --out: lens flies off, world fades in (last 16%) */
+  --e: clamp(0, calc(var(--p) * 5.4), 1);
+  --out: clamp(0, calc((var(--p) - 0.84) * 6.25), 1);
   position: relative;
-  height: 360vh;
+  height: 560vh;
 }
 .hero-sticky {
   position: sticky;
@@ -257,18 +258,26 @@ em,
   overflow: clip;
   perspective: 1400px;
 }
+/* plain page colour behind the lens; full-bleed, so it has no edges. It fades out at
+   the end to reveal the live WebGL world (which starts rendering just before) */
+.hero-sticky::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--bg);
+  opacity: calc(1 - var(--out));
+}
 
-/* the showreel (image sequence) */
-/* at the end the reel shrinks into a rounded card that tilts back and flies away */
+/* the showreel (image sequence): transparent frames, only the lens is drawn */
+/* at the end the lens tilts back, flies away and fades out */
 .seq {
   position: absolute;
   inset: 0;
   overflow: hidden;
   opacity: calc(1 - var(--out) * var(--out));
-  clip-path: inset(calc(var(--out) * 16%) calc(var(--out) * 24%) round calc(var(--out) * 36px));
-  transform: translate3d(0, calc(var(--out) * -4vh), calc(var(--out) * -520px))
+  transform: translate3d(0, calc(var(--out) * -6vh), calc(var(--out) * -700px))
     rotateX(calc(var(--out) * 14deg)) scale(calc(1.08 - var(--e) * 0.08));
-  will-change: transform, opacity, clip-path;
+  will-change: transform, opacity;
 }
 .seq img,
 .seq canvas {
@@ -291,35 +300,6 @@ em,
     rgba(7, 7, 11, 0.2);
   opacity: calc((1 - var(--e) * 0.6) * (1 - var(--out)));
 }
-.reel-hud {
-  position: absolute;
-  right: var(--pad);
-  bottom: var(--pad);
-  left: var(--pad);
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  font-family: var(--mono);
-  font-size: 0.7rem;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.85);
-  opacity: min(clamp(0, calc(var(--e) * 2 - 1), 1), calc(1 - var(--out) * 2));
-}
-.reel-bar {
-  flex: 1;
-  height: 1px;
-  background: rgba(255, 255, 255, 0.22);
-}
-.reel-bar i {
-  display: block;
-  height: 100%;
-  background: #fff;
-  transform: scaleX(var(--p));
-  transform-origin: 0 50%;
-}
-
 .hero-inner {
   position: absolute;
   inset: 0;
@@ -1277,7 +1257,7 @@ html:not(.has-cursor) .cursor-ring {
     display: none;
   }
   .hero {
-    height: 300vh;
+    height: 480vh;
   }
   .hero-title {
     font-size: clamp(2.5rem, 11.5vw, 3.6rem);
@@ -1285,9 +1265,6 @@ html:not(.has-cursor) .cursor-ring {
   .hero-foot {
     flex-direction: column;
     align-items: flex-start;
-  }
-  .reel-hud {
-    gap: 1rem;
   }
   .film {
     height: 560vh;

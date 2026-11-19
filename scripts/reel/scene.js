@@ -11,6 +11,9 @@
  * render.mjs opens this page in headless Chrome and calls window.renderFrame(t)
  * once per frame. Landscape (?w=1920&h=1080) and portrait (?w=1080&h=1920)
  * versions use different camera paths so each fills its screen.
+ *
+ * Frames are transparent: there is no backdrop, only the lens and its glow, so on
+ * the website the lens floats over the page instead of sitting inside a box.
  */
 import * as THREE from "three";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
@@ -24,7 +27,6 @@ const q = new URLSearchParams(location.search);
 const W = Number(q.get("w")) || 1920;
 const H = Number(q.get("h")) || 1080;
 const PORTRAIT = H > W;
-const SITE_BG = [7, 7, 11]; // must match --bg in app/globals.css
 
 // ---------- math ----------
 const clamp01 = (x) => Math.min(1, Math.max(0, x));
@@ -36,8 +38,17 @@ const range = (t, a, b) => smooth((t - a) / (b - a));
 const lerp = (a, b, k) => a + (b - a) * k;
 
 // ---------- renderer ----------
-const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: true, powerPreference: "high-performance" });
+// straight (not premultiplied) alpha: the final pass divides colour by alpha in float
+// precision, so faint glows keep a smooth colour instead of 8-bit noise that bloats the files
+const renderer = new THREE.WebGLRenderer({
+  antialias: false,
+  alpha: true,
+  premultipliedAlpha: false,
+  preserveDrawingBuffer: true,
+  powerPreference: "high-performance",
+});
 renderer.setPixelRatio(1);
+renderer.setClearColor(0x000000, 1);
 renderer.setSize(W, H);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
@@ -48,7 +59,6 @@ const scene = new THREE.Scene();
 const pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 scene.environmentIntensity = 0.6;
-scene.background = backdrop();
 
 const camera = new THREE.PerspectiveCamera(30, W / H, 0.02, 100);
 
@@ -58,32 +68,6 @@ function canvasTex(c) {
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = renderer.capabilities.getMaxAnisotropy();
   return t;
-}
-
-/** dark studio backdrop with a soft violet glow; edges match the site background */
-function backdrop() {
-  const c = document.createElement("canvas");
-  c.width = 1024;
-  c.height = Math.round((1024 * H) / W);
-  const x = c.getContext("2d");
-  const cx = c.width * (PORTRAIT ? 0.5 : 0.6);
-  const cy = c.height * (PORTRAIT ? 0.38 : 0.47);
-  const g = x.createRadialGradient(cx, cy, 0, cx, cy, Math.max(c.width, c.height) * 0.72);
-  g.addColorStop(0, "#221a3e");
-  g.addColorStop(0.32, "#110e20");
-  g.addColorStop(1, "#030305");
-  x.fillStyle = g;
-  x.fillRect(0, 0, c.width, c.height);
-  // dither so the gradient doesn't band after compression
-  const img = x.getImageData(0, 0, c.width, c.height);
-  for (let i = 0; i < img.data.length; i += 4) {
-    const n = (Math.random() - 0.5) * 3;
-    img.data[i] += n;
-    img.data[i + 1] += n;
-    img.data[i + 2] += n;
-  }
-  x.putImageData(img, 0, 0);
-  return canvasTex(c);
 }
 
 /** text printed around a barrel ring (numbers, scales) */
@@ -527,6 +511,11 @@ scene.add(rimC);
 scene.add(new THREE.HemisphereLight(0x8b84ff, 0x050507, 0.25));
 
 // ---------- post ----------
+// Colour is rendered over plain black, so the glass refracts darkness (a transparent
+// clear colour would make three.js fill the glass with milky white). A second, cheap
+// pass renders a coverage mask of the solid parts, and the last pass merges the two
+// into a transparent frame: solid parts take the mask's alpha, while glows, the beam
+// and bloom use their own brightness as alpha, so they still glow over the page.
 const rt = new THREE.WebGLRenderTarget(W, H, { type: THREE.HalfFloatType, samples: 4 });
 const composer = new EffectComposer(renderer, rt);
 composer.setPixelRatio(1);
@@ -534,14 +523,61 @@ composer.setSize(W, H);
 composer.addPass(new RenderPass(scene, camera));
 composer.addPass(new UnrealBloomPass(new THREE.Vector2(W, H), 0.45, 0.5, 0.88));
 composer.addPass(new OutputPass());
-// never go darker than the site's background, so the reel blends into the page seamlessly
-composer.addPass(
-  new ShaderPass({
-    uniforms: { tDiffuse: { value: null }, floorC: { value: new THREE.Vector3(...SITE_BG.map((v) => v / 255)) } },
-    vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
-    fragmentShader: "uniform sampler2D tDiffuse; uniform vec3 floorC; varying vec2 vUv; void main(){ vec4 c = texture2D(tDiffuse, vUv); gl_FragColor = vec4(max(c.rgb, floorC), 1.0); }",
-  }),
-);
+
+const maskRT = new THREE.WebGLRenderTarget(W, H, { samples: 4 });
+const matte = new ShaderPass({
+  uniforms: { tDiffuse: { value: null }, tMask: { value: null } },
+  vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
+  fragmentShader: [
+    "uniform sampler2D tDiffuse; uniform sampler2D tMask; varying vec2 vUv;",
+    "void main(){",
+    "  vec3 c = texture2D(tDiffuse, vUv).rgb;",
+    "  float a = clamp(max(texture2D(tMask, vUv).a, max(c.r, max(c.g, c.b))), 0.0, 1.0);",
+    // the faintest haze (under 1%) is invisible on the page; dropping it keeps files small
+    "  if (a < 2.5 / 255.0) { gl_FragColor = vec4(0.0); return; }",
+    "  gl_FragColor = vec4(min(c / a, vec3(1.0)), a);", // straight alpha (see the renderer)
+    "}",
+  ].join("\n"),
+});
+matte.uniforms.tMask.value = maskRT.texture; // set after: ShaderPass drops render-target textures when cloning uniforms
+composer.addPass(matte);
+
+// mask materials: solid parts are fully opaque, glass is mostly opaque (a hint of the
+// page shows through it), printed decals sit on solid parts and are skipped
+const MASK_SOLID = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+const MASK_GLASS = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, transparent: true, opacity: 0.55, depthWrite: false });
+const MASK_IRIS = new THREE.MeshBasicMaterial({ map: irisTex, alphaTest: 0.5, side: THREE.DoubleSide });
+lens.traverse((o) => {
+  if (!o.isMesh) return;
+  const m = o.material;
+  o.userData.mask = m.transmission > 0 ? MASK_GLASS : m.map === irisTex ? MASK_IRIS : m.transparent ? null : MASK_SOLID;
+});
+const GLOWS = [beam, portal, flash];
+
+function renderMask() {
+  const swapped = [];
+  lens.traverse((o) => {
+    if (!o.isMesh) return;
+    swapped.push([o, o.material, o.visible]);
+    if (o.userData.mask) o.material = o.userData.mask;
+    else o.visible = false;
+  });
+  const glowVis = GLOWS.map((o) => o.visible);
+  GLOWS.forEach((o) => (o.visible = false));
+
+  renderer.setRenderTarget(maskRT);
+  renderer.setClearColor(0x000000, 0);
+  renderer.clear();
+  renderer.render(scene, camera);
+  renderer.setClearColor(0x000000, 1);
+  renderer.setRenderTarget(null);
+
+  GLOWS.forEach((o, i) => (o.visible = glowVis[i]));
+  for (const [o, m, v] of swapped) {
+    o.material = m;
+    o.visible = v;
+  }
+}
 
 // ---------- camera path ----------
 const Y = [0, 1, 0];
@@ -647,6 +683,7 @@ function update(t) {
 
 window.renderFrame = (t) => {
   update(t);
+  renderMask();
   composer.render();
   return renderer.domElement.toDataURL("image/png");
 };
