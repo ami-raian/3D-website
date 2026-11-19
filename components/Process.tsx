@@ -29,7 +29,7 @@ const STEPS = [
 
 const STATS = [
   { from: 0, to: 60, suffix: "", label: "Frames per second, target" },
-  { from: 792, to: 144, suffix: "", label: "Reel frames, down from 792" },
+  { from: 0, to: 180, suffix: "", label: "Rendered reel frames, streamed as you scroll" },
   { from: 0, to: 1, suffix: "", label: "Draw call per frame" },
   { from: 0, to: 100, suffix: "%", label: "Rendered live in your browser" },
 ];

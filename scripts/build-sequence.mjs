@@ -1,43 +1,59 @@
 /**
  * Turns a folder of video frames (png/jpg/webp) into a light, web-ready image sequence.
  *
- *   node scripts/build-sequence.mjs <framesDir> [count=144]
+ *   node scripts/build-sequence.mjs <framesDir> [count=144] [portraitFramesDir]
  *
  * - picks `count` evenly spaced frames (the player crossfades between them, so
- *   ~120–160 frames already feel like smooth video)
+ *   ~120–180 frames already feel like smooth video)
  * - desktop set: 1280px wide WebP
- * - mobile set:  centre-cropped to portrait 9:16, 540px wide WebP
+ * - mobile set:  540px wide WebP, from portraitFramesDir if given (e.g. a separate
+ *   vertical render), otherwise centre-cropped to 9:16 from the landscape frames
  * - writes lib/sequence.ts so the player knows the frame count and sizes
  */
 import sharp from "sharp";
 import fs from "node:fs/promises";
 import path from "node:path";
 
-const [, , src, countArg = "144"] = process.argv;
+const [, , src, countArg = "144", portraitSrc] = process.argv;
 if (!src) {
-  console.error("Usage: node scripts/build-sequence.mjs <framesDir> [count]");
+  console.error("Usage: node scripts/build-sequence.mjs <framesDir> [count] [portraitFramesDir]");
   process.exit(1);
 }
 
 const OUT = path.resolve("public/sequence");
-const files = (await fs.readdir(src))
-  .filter((f) => /\.(png|jpe?g|webp)$/i.test(f))
-  .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-if (!files.length) throw new Error(`No frames found in ${src}`);
+const list = async (dir) => {
+  const f = (await fs.readdir(dir))
+    .filter((n) => /\.(png|jpe?g|webp)$/i.test(n))
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  if (!f.length) throw new Error(`No frames found in ${dir}`);
+  return f;
+};
+const files = await list(src);
+const pfiles = portraitSrc ? await list(portraitSrc) : null;
 
-const count = Math.min(parseInt(countArg, 10) || 144, files.length);
-const pick = Array.from({ length: count }, (_, i) => files[Math.round((i * (files.length - 1)) / Math.max(1, count - 1))]);
+const count = Math.min(parseInt(countArg, 10) || 144, files.length, pfiles?.length ?? Infinity);
+const spread = (arr) => Array.from({ length: count }, (_, i) => arr[Math.round((i * (arr.length - 1)) / Math.max(1, count - 1))]);
+const pick = spread(files);
+const ppick = pfiles ? spread(pfiles) : null;
 
 const meta = await sharp(path.join(src, pick[0])).metadata();
 const W = meta.width;
 const H = meta.height;
-const cropW = Math.min(W, Math.round((H * 9) / 16));
-const crop = { left: Math.round((W - cropW) / 2), top: 0, width: cropW, height: H };
-
 const D = { w: Math.min(1280, W) };
 D.h = Math.round((D.w * H) / W);
-const M = { w: Math.min(540, cropW) };
-M.h = Math.round((M.w * H) / cropW);
+
+let crop = null;
+let M;
+if (ppick) {
+  const pm = await sharp(path.join(portraitSrc, ppick[0])).metadata();
+  M = { w: Math.min(540, pm.width) };
+  M.h = Math.round((M.w * pm.height) / pm.width);
+} else {
+  const cropW = Math.min(W, Math.round((H * 9) / 16));
+  crop = { left: Math.round((W - cropW) / 2), top: 0, width: cropW, height: H };
+  M = { w: Math.min(540, cropW) };
+  M.h = Math.round((M.w * H) / cropW);
+}
 
 await fs.rm(OUT, { recursive: true, force: true });
 await fs.mkdir(path.join(OUT, "d"), { recursive: true });
@@ -49,15 +65,12 @@ const BATCH = 8;
 for (let s = 0; s < count; s += BATCH) {
   await Promise.all(
     pick.slice(s, s + BATCH).map(async (file, k) => {
-      const name = `${String(s + k + 1).padStart(4, "0")}.webp`;
+      const i = s + k;
+      const name = `${String(i + 1).padStart(4, "0")}.webp`;
       const input = sharp(path.join(src, file));
       const d = await input.clone().resize({ width: D.w }).webp({ quality: 62, effort: 5 }).toFile(path.join(OUT, "d", name));
-      const m = await input
-        .clone()
-        .extract(crop)
-        .resize({ width: M.w })
-        .webp({ quality: 60, effort: 5 })
-        .toFile(path.join(OUT, "m", name));
+      const mobileInput = ppick ? sharp(path.join(portraitSrc, ppick[i])) : input.clone().extract(crop);
+      const m = await mobileInput.resize({ width: M.w }).webp({ quality: 60, effort: 5 }).toFile(path.join(OUT, "m", name));
       bytesD += d.size;
       bytesM += m.size;
     }),

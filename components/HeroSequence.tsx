@@ -111,18 +111,19 @@ export default function HeroSequence() {
     let drawn = -1;
     let shownFrame = -1;
     let lastRaw = -1;
-    let still = 0;
-    const off = engine.onTick(() => {
+    let stillMs = 0;
+    const off = engine.onTick((_t, dt) => {
       const hero = engine.find("hero");
       if (!hero || engine.y > hero.top + hero.height) return; // off screen: do nothing
 
       // while scrolling, blend between frames (reads as motion blur);
-      // once the scroll rests, settle on one clean frame so nothing looks double-exposed
+      // once the scroll rests, settle on one clean frame so nothing looks double-exposed.
+      // Time-based, so slow devices settle just as fast as 120 Hz screens.
       const raw = hero.progress * (count - 1);
-      still = Math.abs(raw - lastRaw) < 1e-4 ? still + 1 : 0;
+      stillMs = Math.abs(raw - lastRaw) < 1e-4 ? stillMs + dt : 0;
       lastRaw = raw;
-      const target = still > 4 ? nearest(raw) : raw;
-      cur += (target - cur) * 0.2;
+      const target = stillMs > 70 ? nearest(raw) : raw;
+      cur += (target - cur) * (1 - Math.pow(0.8, dt / 16.7));
       if (Math.abs(target - cur) < 0.002) cur = target;
       if (!dirty && Math.abs(cur - drawn) < 0.002) return;
 

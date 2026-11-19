@@ -1,7 +1,8 @@
 # Lumen: a lightweight scroll-driven 3D website
 
-Next.js 16 (App Router) + raw WebGL + Lenis. **No videos, no image sequences**: the whole
-scroll "film" is ray-marched live on the GPU, so the page is about 210 KB transferred in total.
+Next.js 16 (App Router) + raw WebGL + Lenis. The hero is a scroll-scrubbed 3D showreel (frames
+rendered with three.js), and everything after it is ray-marched live on the GPU. First load is
+about 220 KB; reel frames stream in afterwards.
 
 ```bash
 npm install
@@ -19,22 +20,34 @@ npm run build && npm start
 | `components/ShaderCanvas.tsx` | Maps scroll to the shader timeline and adapts render resolution to the device's speed. |
 | `app/globals.css` | Nearly all animation is plain CSS `calc()` on `--p`. No animation library. |
 
-## Hero showreel (scroll-scrubbed image sequence)
+## Hero showreel: a rendered 3D lens, frame by frame
 
-The hero plays a video made of images as you scroll (`components/HeroSequence.tsx`). It stays light:
-the first frame is a normal `<img>`, the rest stream in progressively (every 16th frame first, then
-filling in), it crossfades between neighbouring frames while you scroll, and phones get a
-portrait-cropped set where only every 2nd frame is loaded.
+The hero plays an animation made of images as you scroll (`components/HeroSequence.tsx`): a
+fictional **LUMEN 50mm** camera lens that explodes into its parts, fires a beam of light through
+its glass, flies the camera through the optics, then snaps back together.
 
-To use your own footage, export the video as frames (png/jpg) into a folder, then run:
+Every frame is rendered by us, no stock footage:
+
+| File | What it does |
+| --- | --- |
+| `scripts/reel/scene.js` | The three.js scene: lens model (glass with coating, metal, rubber grip, aperture iris, chrome mount), lights, bloom, and the camera path. Timeline `t = 0 → 1`. |
+| `scripts/reel/render.mjs` | Opens the scene in headless Chrome (GPU) and saves PNG frames: 1920x1080 landscape and 1080x1920 portrait (separate camera path so phones get a proper vertical shot). |
+| `scripts/build-sequence.mjs` | Turns frames into small WebP files in `public/sequence/` and updates `lib/sequence.ts`. |
+
+Re-render after changing the scene (about 3 minutes):
 
 ```bash
-node scripts/build-sequence.mjs "C:/path/to/frames" 144
+npm run reel
+# test a few frames first:  node scripts/reel/render.mjs --preview=0,0.3,0.6
 ```
 
-This writes WebP frames to `public/sequence/` (1280px desktop, 540px portrait mobile) and updates
-`lib/sequence.ts`. 120 to 160 frames is the sweet spot. The current reel is 792 PNGs (684 MB)
-squeezed into 144 frames (about 4.5 MB desktop, about 1.9 MB actually loaded on phones).
+The player stays light: the first frame is a normal `<img>`, the rest stream in progressively
+(every 16th frame first, then filling in), it crossfades between neighbouring frames while you
+scroll, and phones load only every 2nd frame. Current reel: 180 frames, about 3.2 MB on
+desktop and about 1.1 MB actually loaded on phones.
+
+You can also use any other footage: export it as frames into a folder and run
+`node scripts/build-sequence.mjs "C:/path/to/frames" 150`.
 
 ## Customise
 
