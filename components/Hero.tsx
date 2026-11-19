@@ -42,11 +42,11 @@ export default function Hero() {
               An independent studio building immersive web experiences. Scroll to play the reel, then step inside a
               world rendered live on your GPU.
             </p>
-            <a href="#film" className="scroll-cue" data-cursor>
-              <span>Scroll to play</span>
-              <span className="cue-line" aria-hidden />
-            </a>
           </div>
+          <a href="#film" className="scroll-cue reveal" data-cursor>
+            <span>Scroll to play</span>
+            <span className="cue-line" aria-hidden />
+          </a>
         </div>
       </div>
     </Track>

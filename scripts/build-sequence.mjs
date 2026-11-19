@@ -5,8 +5,8 @@
  *
  * - picks `count` evenly spaced frames (the player crossfades between them, so
  *   ~120–180 frames already feel like smooth video)
- * - desktop set: 1280px wide AVIF
- * - mobile set:  540px wide AVIF, from portraitFramesDir if given (e.g. a separate
+ * - desktop set: AVIF, up to 1920px wide (the reel is rendered at 1920, so no resampling)
+ * - mobile set:  AVIF, up to 1080px wide, from portraitFramesDir if given (e.g. a separate
  *   vertical render), otherwise centre-cropped to 9:16 from the landscape frames
  * - transparency is kept. AVIF because its alpha is compressed lossy: transparent
  *   WebP frames with soft glows came out 3 to 5 times larger
@@ -43,19 +43,19 @@ const ppick = pfiles ? spread(pfiles) : null;
 const meta = await sharp(path.join(src, pick[0])).metadata();
 const W = meta.width;
 const H = meta.height;
-const D = { w: Math.min(1280, W) };
+const D = { w: Math.min(1920, W) };
 D.h = Math.round((D.w * H) / W);
 
 let crop = null;
 let M;
 if (ppick) {
   const pm = await sharp(path.join(portraitSrc, ppick[0])).metadata();
-  M = { w: Math.min(540, pm.width) };
+  M = { w: Math.min(1080, pm.width) };
   M.h = Math.round((M.w * pm.height) / pm.width);
 } else {
   const cropW = Math.min(W, Math.round((H * 9) / 16));
   crop = { left: Math.round((W - cropW) / 2), top: 0, width: cropW, height: H };
-  M = { w: Math.min(540, cropW) };
+  M = { w: Math.min(1080, cropW) };
   M.h = Math.round((M.w * H) / cropW);
 }
 
@@ -64,7 +64,7 @@ await fs.mkdir(path.join(OUT, "d"), { recursive: true });
 await fs.mkdir(path.join(OUT, "m"), { recursive: true });
 
 const AVIF_D = { quality: 45, effort: 4, chromaSubsampling: "4:2:0" };
-const AVIF_M = { quality: 50, effort: 4, chromaSubsampling: "4:2:0" };
+const AVIF_M = { quality: 45, effort: 4, chromaSubsampling: "4:2:0" };
 const POSTER = { quality: 72, alphaQuality: 90, effort: 5 };
 
 let bytesD = 0;

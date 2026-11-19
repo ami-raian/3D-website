@@ -46,8 +46,13 @@ npm run reel
 
 The player stays light: the first frame is a normal `<img>`, the rest stream in progressively
 (every 16th frame first, then filling in), it crossfades between neighbouring frames while you
-scroll, and phones load only every 2nd frame. Current reel: 180 frames, about 4.1 MB on
-desktop and about 1.6 MB actually loaded on phones.
+scroll, and phones load only every 2nd frame. Current reel: 180 frames, about 5.0 MB on
+desktop and about 2.4 MB actually loaded on phones.
+
+Frames are shown whole (never cropped) and never larger than their own size: 1920 px wide on
+desktop and 1080 px on phones, the reel's native render size, so the lens stays sharp. On wide
+screens the title sits in the middle, beside the lens; on tall screens the lens is on top and
+the text below. Rotating a phone switches between the two renders.
 
 Frames are AVIF because they are transparent. WebP stores transparency losslessly, and the soft
 glows made those files 3 to 5 times larger; AVIF compresses it like the image itself. A browser
@@ -60,6 +65,7 @@ You can also use any other footage: export it as frames into a folder and run
 
 - **Text and content**: `components/Hero.tsx`, `Film.tsx` (chapters), `Work.tsx` (projects), `Process.tsx`, `Footer.tsx`
 - **Colours**: `:root` in `app/globals.css`, and the `mood()` function in `components/shaders.ts` (one colour grade per chapter)
+- **Mobile menu**: `components/Nav.tsx`. Below 900 px it replaces the nav links with a full-screen menu.
 - **Reel speed**: `.hero { height: 560vh }` in `globals.css` (480vh on phones). Taller means a slower reel. `FOLLOW` in `components/HeroSequence.tsx` sets how gently the frames catch up with the scroll.
 - **Film length**: `.film { height: 640vh }` in `globals.css`. Taller means slower scrubbing.
 - **3D shapes**: the `shape()` function in `components/shaders.ts`

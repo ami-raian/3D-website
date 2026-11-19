@@ -38,6 +38,8 @@ export interface ScrollDriver {
   readonly scroll: number;
   readonly velocity: number;
   scrollTo(target: number | string | HTMLElement, options?: object): void;
+  stop(): void;
+  start(): void;
 }
 
 export const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
@@ -109,6 +111,15 @@ class ScrollEngine {
       const el = typeof target === "string" ? document.querySelector<HTMLElement>(target) : target;
       el?.scrollIntoView({ behavior: "smooth" });
     }
+  }
+
+  /** freezes page scrolling, e.g. while the full-screen mobile menu is open */
+  lock(locked: boolean) {
+    if (this.driver) {
+      if (locked) this.driver.stop();
+      else this.driver.start();
+    }
+    document.documentElement.classList.toggle("is-locked", locked);
   }
 
   private measure() {

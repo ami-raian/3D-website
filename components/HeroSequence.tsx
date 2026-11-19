@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { engine } from "@/lib/engine";
+import { vars } from "@/lib/css";
 import { SEQUENCE } from "@/lib/sequence";
 
 const PORTRAIT = "(max-aspect-ratio: 17/20)";
@@ -19,21 +20,35 @@ const pad = (n: number) => String(n).padStart(4, "0");
  * - other frames stream in progressively: every 16th first, then 8th, 4th...
  *   so scrubbing works right away and just gets more detailed as frames arrive
  * - between two loaded frames it crossfades, so 180 frames feel like real video
- * - frames are transparent (just the lens, no backdrop), so the lens floats over the page
- * - phones load a portrait-cropped set, and only every 2nd frame
+ * - frames are transparent (just the lens, no backdrop), so the lens floats over the page.
+ *   That also means the whole frame can be shown ("contain", nothing cropped), and it is
+ *   never drawn bigger than its own pixel size, so it stays sharp
+ * - tall screens get a separate portrait render (and switch if the phone is rotated);
+ *   phones load only every 2nd frame
  * - redraws only when the frame actually changes
  */
 export default function HeroSequence() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
+  // which render to play: portrait (tall screens) or landscape. Only read in effects.
+  const [portrait, setPortrait] = useState(() => typeof window !== "undefined" && matchMedia(PORTRAIT).matches);
+
+  useEffect(() => {
+    const mq = matchMedia(PORTRAIT);
+    const onChange = () => setPortrait(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
 
+    // (re)starting, e.g. after a rotation: show the poster until the new set's first frame is in
+    if (imgRef.current) imgRef.current.style.visibility = "";
     const { count, base } = SEQUENCE;
-    const portrait = matchMedia(PORTRAIT).matches;
+    const srcW = portrait ? SEQUENCE.mobile.w : SEQUENCE.desktop.w;
     const coarse = matchMedia("(pointer: coarse)").matches;
     const conn = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
     const minStride = conn?.saveData ? 8 : coarse ? 2 : 1;
@@ -90,10 +105,14 @@ export default function HeroSequence() {
     else setTimeout(() => start(), 200);
 
     // ---- canvas sizing ----
+    // the canvas box (set in CSS) already has the frame's shape and is never larger than
+    // the frame; give it enough pixels for this screen, but no more than the frame has
     const resize = () => {
-      const s = Math.min(window.devicePixelRatio || 1, 1.25);
-      canvas.width = Math.round(canvas.clientWidth * s);
-      canvas.height = Math.round(canvas.clientHeight * s);
+      const cssW = canvas.clientWidth || 1;
+      const s = Math.max(1, Math.min(window.devicePixelRatio || 1, srcW / cssW));
+      canvas.width = Math.round(cssW * s);
+      canvas.height = Math.round((canvas.clientHeight || 1) * s);
+      ctx.imageSmoothingQuality = "high";
       dirty = true;
     };
     resize();
@@ -102,7 +121,7 @@ export default function HeroSequence() {
     const draw = (img: HTMLImageElement, alpha: number) => {
       const cw = canvas.width;
       const ch = canvas.height;
-      const scale = Math.max(cw / img.naturalWidth, ch / img.naturalHeight);
+      const scale = Math.min(cw / img.naturalWidth, ch / img.naturalHeight);
       const dw = img.naturalWidth * scale;
       const dh = img.naturalHeight * scale;
       ctx.globalAlpha = alpha;
@@ -178,10 +197,15 @@ export default function HeroSequence() {
       off();
       window.removeEventListener("resize", resize);
     };
-  }, []);
+  }, [portrait]);
 
+  const { desktop: d, mobile: m } = SEQUENCE;
   return (
-    <div className="seq" aria-hidden>
+    <div
+      className="seq"
+      aria-hidden
+      style={vars({ "--ar-d": `${d.w} / ${d.h}`, "--fw-d": `${d.w}px`, "--ar-m": `${m.w} / ${m.h}`, "--fw-m": `${m.w}px` })}
+    >
       <picture>
         {/* AVIF browsers get frame 1 itself (tiny, and the canvas reuses it from cache);
             the WebP poster is only for browsers without AVIF */}

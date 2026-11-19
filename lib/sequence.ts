@@ -3,6 +3,6 @@ export const SEQUENCE = {
   base: "/sequence",
   ext: "avif",
   count: 180,
-  desktop: { w: 1280, h: 720 },
-  mobile: { w: 540, h: 960 },
+  desktop: { w: 1920, h: 1080 },
+  mobile: { w: 1080, h: 1920 },
 } as const;
