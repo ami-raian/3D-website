@@ -13,6 +13,8 @@
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --pad: clamp(1.25rem, 4vw, 3.5rem);
   --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  /* Syne gets wider as it gets bolder; 600 keeps headlines strong without shouting */
+  --display: 600;
   --p: 0;
 }
 
@@ -102,10 +104,10 @@ em,
 }
 
 .h2 {
-  font-size: clamp(2.6rem, 6.4vw, 6.6rem);
-  font-weight: 800;
-  line-height: 0.9;
-  letter-spacing: -0.05em;
+  font-size: clamp(2.1rem, 4.4vw, 4.6rem);
+  font-weight: var(--display);
+  line-height: 0.95;
+  letter-spacing: -0.04em;
   text-transform: uppercase;
 }
 .h2 em {
@@ -342,10 +344,10 @@ em,
 .hero-title {
   margin-top: auto;
   margin-bottom: clamp(1.5rem, 5vh, 3.2rem);
-  font-size: clamp(2.6rem, 10.2vw, 12rem);
-  font-weight: 800;
-  line-height: 0.84;
-  letter-spacing: -0.055em;
+  font-size: clamp(2.5rem, 6.4vw, 7.4rem);
+  font-weight: var(--display);
+  line-height: 0.9;
+  letter-spacing: -0.045em;
   text-transform: uppercase;
 }
 .line {
@@ -565,11 +567,11 @@ em,
   background: var(--faint);
 }
 .cap-title {
-  font-size: clamp(3.4rem, 7.8vw, 8.6rem);
+  font-size: clamp(2.8rem, 5.4vw, 6rem);
   white-space: nowrap;
-  font-weight: 800;
-  line-height: 0.82;
-  letter-spacing: -0.06em;
+  font-weight: var(--display);
+  line-height: 0.9;
+  letter-spacing: -0.045em;
   text-transform: uppercase;
 }
 .cap-sub {
@@ -601,11 +603,11 @@ em,
   padding: 0 var(--pad);
 }
 .story-text {
-  max-width: 21em;
-  font-size: clamp(1.8rem, 4.4vw, 4.5rem);
-  font-weight: 700;
-  line-height: 1.06;
-  letter-spacing: -0.035em;
+  max-width: 25em;
+  font-size: clamp(1.35rem, 2.8vw, 2.9rem);
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
 }
 .w {
   opacity: clamp(0.12, calc((var(--p) * (var(--n) + 8) - var(--i)) * 0.3), 1);
@@ -663,7 +665,7 @@ em,
   padding: calc(4.6rem + 2vh) var(--pad) 0;
 }
 .work-head .h2 {
-  font-size: clamp(2.2rem, 4.6vw, 4.8rem);
+  font-size: clamp(1.9rem, 3.4vw, 3.5rem);
 }
 .work-stage {
   position: relative;
@@ -845,10 +847,10 @@ em,
 }
 .card h3 {
   margin: 0.35rem 0 0.45rem;
-  font-size: clamp(1.6rem, 2.6vw, 2.6rem);
-  font-weight: 800;
+  font-size: clamp(1.3rem, 1.8vw, 1.85rem);
+  font-weight: var(--display);
   line-height: 1;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.03em;
   text-transform: uppercase;
 }
 .card p {
@@ -996,10 +998,10 @@ em,
 }
 .tilt h3 {
   margin: 0.4rem 0 0.9rem;
-  font-size: clamp(1.8rem, 2.6vw, 2.5rem);
-  font-weight: 800;
+  font-size: clamp(1.4rem, 1.8vw, 1.85rem);
+  font-weight: var(--display);
   line-height: 1;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.03em;
   text-transform: uppercase;
 }
 .tilt p {
@@ -1033,11 +1035,11 @@ em,
 }
 .stat strong {
   display: block;
-  font-size: clamp(3rem, 6.4vw, 6.4rem);
+  font-size: clamp(2.4rem, 4vw, 4.2rem);
   font-variant-numeric: tabular-nums;
-  font-weight: 800;
+  font-weight: var(--display);
   line-height: 1;
-  letter-spacing: -0.05em;
+  letter-spacing: -0.035em;
 }
 .stat > span {
   display: block;
@@ -1070,9 +1072,9 @@ em,
   align-items: center;
   gap: 2.4rem;
   padding-right: 2.4rem;
-  font-size: clamp(2rem, 5vw, 4.5rem);
-  font-weight: 800;
-  letter-spacing: -0.04em;
+  font-size: clamp(1.6rem, 3.4vw, 3.2rem);
+  font-weight: var(--display);
+  letter-spacing: -0.035em;
   line-height: 1.1;
   text-transform: uppercase;
   white-space: nowrap;
@@ -1092,10 +1094,10 @@ em,
   text-align: center;
 }
 .cta-title {
-  font-size: clamp(1.9rem, 8.6vw, 10rem);
-  font-weight: 800;
-  line-height: 0.86;
-  letter-spacing: -0.055em;
+  font-size: clamp(2.1rem, 5.8vw, 6.4rem);
+  font-weight: var(--display);
+  line-height: 0.92;
+  letter-spacing: -0.045em;
   text-transform: uppercase;
   opacity: calc(var(--p) * 1.6 - 0.2);
   transform: translate3d(0, calc((1 - var(--p)) * 12vh), 0) scale(calc(0.86 + var(--p) * 0.14));
@@ -1277,6 +1279,9 @@ html:not(.has-cursor) .cursor-ring {
   .hero {
     height: 300vh;
   }
+  .hero-title {
+    font-size: clamp(2.5rem, 11.5vw, 3.6rem);
+  }
   .hero-foot {
     flex-direction: column;
     align-items: flex-start;
@@ -1294,6 +1299,7 @@ html:not(.has-cursor) .cursor-ring {
     bottom: 22svh;
     left: var(--pad);
     width: auto;
+    align-items: flex-start;
     text-align: left;
     transform: translate3d(0, calc(var(--d) * -10vh), 0) rotateX(calc(var(--d) * -24deg));
   }
@@ -1304,7 +1310,7 @@ html:not(.has-cursor) .cursor-ring {
     margin-left: 0;
   }
   .cap-title {
-    font-size: clamp(2.6rem, 12.5vw, 6rem);
+    font-size: clamp(2.4rem, 11vw, 4.2rem);
   }
   .hud {
     left: calc(var(--pad) + 1rem);
